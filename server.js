@@ -12,17 +12,15 @@ const hexagrams = require('./hexagrams.js');
 
 // API endpoint to get a random hexagram
 app.get('/api/consult', (req, res) => {
-  // Traditional I Ching method: generate 6 lines
+  // Simplified method: directly pick a random hexagram from 1-64
+  const hexagramNumber = Math.floor(Math.random() * 64) + 1;
+  const hexagram = hexagrams[hexagramNumber - 1];
+  
+  // Generate 6 random lines for visual display
   const lines = [];
   for (let i = 0; i < 6; i++) {
-    // Each line is determined by throwing coins/yarrow stalks
-    // Simplified: random yang (1) or yin (0)
     lines.push(Math.random() > 0.5 ? 1 : 0);
   }
-  
-  // Find the hexagram number based on the lines
-  const hexagramNumber = calculateHexagramNumber(lines);
-  const hexagram = hexagrams[hexagramNumber - 1];
   
   res.json({
     lines,
@@ -35,18 +33,6 @@ app.get('/api/consult', (req, res) => {
     }
   });
 });
-
-// Calculate hexagram number from lines (bottom to top)
-function calculateHexagramNumber(lines) {
-  // Convert binary to hexagram number (1-64)
-  // Lines go from bottom to top in I Ching
-  let number = 0;
-  for (let i = 0; i < 6; i++) {
-    number += lines[i] * Math.pow(2, i);
-  }
-  // Map to 1-64 range
-  return (number % 64) + 1;
-}
 
 app.listen(PORT, () => {
   console.log(`I Ching server running on port ${PORT}`);

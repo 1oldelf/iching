@@ -17,13 +17,13 @@
     <div class="audio-select-container">
       <label for="audioSelect" class="audio-label">Select an audio</label>
       <select id="audioSelect" aria-label="Select meditation sound">
-        <option value="sndClips/rainstick1.mp3">Rain</option>
-        <option value="sndClips/templeBell.mp3">Temple Bell</option>
-        <option value="sndClips/windchimes1.mp3">Chimes</option>
-        <option value="sndClips/chimes2.mp3">Chimes2</option>
-        <option value="sndClips/birds1.mp3">Birds</option>
-        <option value="sndClips/lake.mp3">Lake</option>
-        <option value="sndClips/throatSynth.mp3">Throat singing</option>
+        <option value="rainstick1.mp3">Rain</option>
+        <option value="templeBell.mp3">Temple Bell</option>
+        <option value="windchimes1.mp3">Chimes</option>
+        <option value="chimes2.mp3">Chimes2</option>
+        <option value="birds1.mp3">Birds</option>
+        <option value="lake.mp3">Lake</option>
+        <option value="throatSynth.mp3">Throat singing</option>
       </select>
     </div>
     <!-- Audio status indicator -->
@@ -48,7 +48,7 @@
         <div>
           <label for="helpAudio">Listen to Birds Meditation Sound:</label><br>
           <audio id="helpAudio" controls controlsList="nodownload">
-            <source src="sndClips/birds1.mp3" type="audio/mpeg">
+            <source src="birds1.mp3" type="audio/mpeg">
             Your browser does not support the audio element.
           </audio>
         </div>
@@ -127,7 +127,7 @@
     if (!audioContext) {
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
-    fetch('sndClips/coin.mp3')
+    fetch('coin.mp3')
       .then(response => response.arrayBuffer())
       .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
       .then(audioBuffer => {

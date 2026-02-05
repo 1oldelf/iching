@@ -1,0 +1,16 @@
+{
+  "name": "iching",
+  "version": "1.0.0",
+  "description": "I Ching divination web application for fun",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["iching", "divination", "hexagram", "oracle"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>I Ching Oracle - 易經</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>易經 I Ching Oracle</h1>
+            <p class="subtitle">The Book of Changes - Ancient Chinese Divination</p>
+        </header>
+
+        <main>
+            <section class="consultation">
+                <div class="intro">
+                    <p>Welcome to the I Ching Oracle. The I Ching is an ancient Chinese divination text dating back over 3000 years.</p>
+                    <p>Clear your mind, focus on your question, and consult the oracle.</p>
+                </div>
+                
+                <button id="consultBtn" class="consult-btn">Consult the Oracle</button>
+                
+                <div id="loading" class="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Casting the hexagram...</p>
+                </div>
+            </section>
+
+            <section id="result" class="result" style="display: none;">
+                <h2>Your Hexagram</h2>
+                
+                <div class="hexagram-display">
+                    <div id="hexagramLines" class="hexagram-lines"></div>
+                </div>
+                
+                <div class="hexagram-info">
+                    <h3 id="hexagramNumber" class="hexagram-number"></h3>
+                    <h3 id="hexagramName" class="hexagram-name"></h3>
+                    <p id="hexagramChinese" class="hexagram-chinese"></p>
+                    <div class="divider"></div>
+                    <p id="hexagramDescription" class="hexagram-description"></p>
+                    <div class="judgment">
+                        <h4>The Judgment</h4>
+                        <p id="hexagramJudgment"></p>
+                    </div>
+                </div>
+                
+                <button id="consultAgainBtn" class="consult-btn secondary">Consult Again</button>
+            </section>
+        </main>
+
+        <footer>
+            <p>For entertainment and reflection purposes only</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

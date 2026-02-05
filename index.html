@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=5.0" />
+<title>I Ching "A Book of Changes"</title>
+<link rel="stylesheet" href="iching.css" />
+</head>
+<body>
+  <div class="page-wrapper">
+    <div class="main-container">
+      <h1>I Ching Hexagram Generator</h1>
+      <div class="button-group">
+        <button id="helpBtn" class="help-btn">?</button>
+        <button id="exitBtn" class="exit-btn">🎋 Stop</button>
+      </div>
+    <div class="audio-select-container">
+      <label for="audioSelect" class="audio-label">Select an audio</label>
+      <select id="audioSelect" aria-label="Select meditation sound">
+        <option value="sndClips/rainstick1.mp3">Rain</option>
+        <option value="sndClips/templeBell.mp3">Temple Bell</option>
+        <option value="sndClips/windchimes1.mp3">Chimes</option>
+        <option value="sndClips/chimes2.mp3">Chimes2</option>
+        <option value="sndClips/birds1.mp3">Birds</option>
+        <option value="sndClips/lake.mp3">Lake</option>
+        <option value="sndClips/throatSynth.mp3">Throat singing</option>
+      </select>
+    </div>
+    <!-- Audio status indicator -->
+    <div id="audioStatus" class="audio-status" style="display: none;">
+      <span id="audioStatusText">Loading audio...</span>
+    </div>
+    <button id="generate">Generate Hexagram</button>
+    <div class="canvas-container">
+      <canvas id="hexCanvas" width="200" height="200" aria-label="Hexagram visualization"></canvas>
+    </div>
+    <div id="hexagram"></div>
+    <div id="helpModal" class="help-modal" aria-modal="true" role="dialog" tabindex="-1">
+      <div class="help-modal-content">
+        <h2>About This App</h2>
+        <p>This app is an interactive I Ching Hexagram Generator. The I Ching, or "Book of Changes," is a Bronze age (3000 BCE) Chinese text used for meditation, divination, and insight.</p>
+        <p>This is not a tool for forcasting, diagnosis, or medical, spritual adice. Consult a health advisor for any medical or spiritual concerns.</p>
+        <ul>
+          <li>Select a file from the dropdown to play 30 sec. of ambient audio while you use the app.</li>
+          <li>Click "Generate Hexagram" to receive a possibly meaningful random hexagram, number, title and a vague interpretation.</li>
+          <li>The hexagram is visualized on the canvas below the button. More in-depth commentary is available elsewhere.</li>
+        </ul>
+        <div>
+          <label for="helpAudio">Listen to Birds Meditation Sound:</label><br>
+          <audio id="helpAudio" controls controlsList="nodownload">
+            <source src="sndClips/birds1.mp3" type="audio/mpeg">
+            Your browser does not support the audio element.
+          </audio>
+        </div>
+        <button id="closeHelp" style="margin-top:16px;">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  // Help button functionality
+  const helpModal = document.getElementById('helpModal');
+  const helpBtn = document.getElementById('helpBtn');
+  const closeHelpBtn = document.getElementById('closeHelp');
+  
+  function openHelpModal() {
+    helpModal.style.display = 'flex';
+    helpModal.focus();
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+  }
+  
+  function closeHelpModal() {
+    helpModal.style.display = 'none';
+    document.body.style.overflow = ''; // Restore scrolling
+    helpBtn.focus(); // Return focus to help button
+  }
+  
+  helpBtn.onclick = openHelpModal;
+  closeHelpBtn.onclick = closeHelpModal;
+  
+  // Close modal when clicking outside content
+  helpModal.onclick = function(e) {
+    if (e.target === helpModal) {
+      closeHelpModal();
+    }
+  };
+  
+  // Close modal with Escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && helpModal.style.display === 'flex') {
+      closeHelpModal();
+    }
+  });
+
+  // Play audio from dropdown when Generate Hexagram is pressed
+  let audioContext;
+  let currentSource;
+  const audioStatus = document.getElementById('audioStatus');
+  const audioStatusText = document.getElementById('audioStatusText');
+  
+  function showAudioStatus(message) {
+    audioStatusText.textContent = message;
+    audioStatus.style.display = 'block';
+  }
+  
+  function hideAudioStatus() {
+    audioStatus.style.display = 'none';
+  }
+  
+  function clearCanvasAndExplanations() {
+    // Clear the canvas
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    // Clear the hexagram explanation text
+    hexagramDiv.innerHTML = '';
+    hexagramDiv.style.backgroundColor = '';
+    hexagramDiv.style.color = '';
+    hexagramDiv.style.padding = '';
+    hexagramDiv.style.marginTop = '';
+    hexagramDiv.style.fontSize = '';
+    // Reset current hexagram reference
+    currentHexagram = null;
+  }
+  
+  function playCoinSound() {
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    fetch('sndClips/coin.mp3')
+      .then(response => response.arrayBuffer())
+      .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+      .then(audioBuffer => {
+        const coinSource = audioContext.createBufferSource();
+        coinSource.buffer = audioBuffer;
+        coinSource.connect(audioContext.destination);
+        coinSource.start();
+        // Clear coin source when finished
+        coinSource.onended = function() {
+          // Coin audio finished, source will be garbage collected
+        };
+      })
+      .catch(err => {
+        console.log('Coin sound not available:', err);
+      });
+  }
+  
+const canvas = document.getElementById('hexCanvas');
+const ctx = canvas.getContext('2d');
+if (!ctx) {
+  alert('Your browser does not support Canvas 2D context. Hexagram cannot be displayed.');
+}
+
+// Store current hexagram for redrawing on resize
+let currentHexagram = null;
+
+// Resize handler for responsive canvas
+function handleResize() {
+  if (currentHexagram) {
+    drawHexagram(currentHexagram);
+  }
+}
+
+// Add resize listener with debouncing
+let resizeTimeout;
+window.addEventListener('resize', function() {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(handleResize, 150);
+});
+const generateBtn = document.getElementById('generate');
+const hexagramDiv = document.getElementById('hexagram');
+const errorDiv = document.createElement('div');
+errorDiv.id = 'errorMsg';
+errorDiv.style.color = 'red';
+errorDiv.style.marginTop = '10px';
+canvas.parentNode.insertBefore(errorDiv, canvas.nextSibling);
+
+function tossCoins() {
+  let total = 0;
+  for (let i = 0; i < 3; i++) total += Math.random() < 0.5 ? 2 : 3;
+  return (total === 6 || total === 8) ? 'broken' : 'solid';
+}
+function generateHexagram() {
+  const lines = [];
+  for (let i = 0; i < 6; i++) lines.unshift(tossCoins());
+  return lines;
+}
+function drawHexagram(lines) {
+  if (!ctx) return;
+  
+  // Make canvas responsive
+  const container = canvas.parentElement;
+  const containerWidth = container.offsetWidth;
+  const canvasSize = Math.min(containerWidth - 40, 220); // Max 220px, with 40px margin
+  
+  canvas.width = canvasSize;
+  canvas.height = canvasSize;
+  canvas.style.width = canvasSize + 'px';
+  canvas.style.height = canvasSize + 'px';
+  
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // Calculate responsive dimensions
+  const lineHeight = canvasSize / 7; // Divide by 7 to leave space at top and bottom
+  const lineWidth = Math.max(4, canvasSize / 35); // Responsive line width
+  const lineLength = canvasSize * 0.5; // 50% of canvas width
+  const lineStart = (canvasSize - lineLength) / 2; // Center the lines
+  const gapSize = lineLength * 0.15; // Gap for broken lines
+  
+  for (let i = 0; i < 6; i++) {
+    const y = (i + 1) * lineHeight;
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    // Add subtle shadow effect
+    ctx.shadowColor = 'rgba(42, 77, 60, 0.3)';
+    ctx.shadowBlur = 2;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+    
+    // Use gradient for line color
+    const gradient = ctx.createLinearGradient(lineStart, y, lineStart + lineLength, y);
+    gradient.addColorStop(0, '#2a4d3c');
+    gradient.addColorStop(0.5, '#1a3d2c');
+    gradient.addColorStop(1, '#2a4d3c');
+    ctx.strokeStyle = gradient;
+    
+    if (lines[i] === 'solid') {
+      ctx.beginPath();
+      ctx.moveTo(lineStart, y);
+      ctx.lineTo(lineStart + lineLength, y);
+      ctx.stroke();
+    } else {
+      // Broken line with gap in middle
+      const firstSegment = (lineLength - gapSize) / 2;
+      ctx.beginPath();
+      ctx.moveTo(lineStart, y);
+      ctx.lineTo(lineStart + firstSegment, y);
+      ctx.moveTo(lineStart + firstSegment + gapSize, y);
+      ctx.lineTo(lineStart + lineLength, y);
+      ctx.stroke();
+    }
+    
+    // Reset shadow for next iteration
+    ctx.shadowColor = 'transparent';
+  }
+}
+function getHexagramNumber(lines) {
+  let binaryStr = '';
+  for (let i = 0; i < 6; i++) binaryStr += lines[5 - i] === 'solid' ? '1' : '0';
+  return parseInt(binaryStr, 2) + 1;
+}
+generateBtn.onclick = () => {
+  errorDiv.textContent = '';
+  
+  // Play coin sound effect immediately
+  playCoinSound();
+  
+  // Stop any currently playing audio
+  if (currentSource) {
+    currentSource.stop();
+    currentSource = null;
+    hideAudioStatus();
+  }
+
+  // Wait 1500ms (1.5 seconds) before generating hexagram and playing meditation sound
+  setTimeout(() => {
+    try {
+      // Clear previous hexagram and explanation before generating new one
+      clearCanvasAndExplanations();
+      const hexagramLines = generateHexagram();
+      currentHexagram = hexagramLines; // Store for resize handling
+      drawHexagram(hexagramLines);
+      const hexNumber = getHexagramNumber(hexagramLines);
+      const title = titlesAdd[String(hexNumber)] || "Title not found.";
+      const explanation = hexagramExplanations[String(hexNumber)] || "Explanation not found.";
+      hexagramDiv.innerHTML = `
+        <span style="font-weight:600;">Hexagram Number:</span> ${hexNumber},<br>
+        <span style="font-weight:600;">Title:</span> ${title}<br>
+        <span style="font-weight:400;">Explanation:</span> ${explanation}
+      `;
+      hexagramDiv.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
+      hexagramDiv.style.color = "black";
+      hexagramDiv.style.padding = "12px";
+      hexagramDiv.style.marginTop = "6px";
+      hexagramDiv.style.fontSize = "0.95em";
+    } catch (err) {
+      errorDiv.textContent = 'Error generating hexagram: ' + err.message;
+    }
+
+    // Audio playback
+    const audioSelect = document.getElementById('audioSelect');
+    if (audioSelect.value) {
+      try {
+        showAudioStatus('Loading audio...');
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        fetch(audioSelect.value)
+        .then(response => {
+          if (!response.ok) throw new Error('Audio file not found: ' + audioSelect.value);
+          return response.arrayBuffer();
+        })
+        .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+        .then(audioBuffer => {
+          if (currentSource) {
+            currentSource.stop();
+          }
+          currentSource = audioContext.createBufferSource();
+          currentSource.buffer = audioBuffer;
+          currentSource.connect(audioContext.destination);
+          currentSource.start();
+          showAudioStatus('Playing meditation sound...');
+          // Hide status after 3 seconds
+          setTimeout(hideAudioStatus, 3000);
+          // Setup ended callback
+          currentSource.onended = function() {
+            hideAudioStatus();
+            currentSource = null; // Clear reference when audio ends
+          };
+        })
+        .catch(e => {
+          errorDiv.textContent = 'Audio playback error: ' + e.message;
+          showAudioStatus('Audio error occurred');
+          setTimeout(hideAudioStatus, 2000);
+        });
+      } catch (err) {
+        errorDiv.textContent = 'Audio error: ' + err.message;
+        showAudioStatus('Audio error occurred');
+        setTimeout(hideAudioStatus, 2000);
+      }
+    }
+  }, 1000); // Close setTimeout with 1000ms (1 second) delay
+};
+
+// Exit button functionality
+var exitBtn = document.getElementById('exitBtn');
+if (exitBtn) {
+  exitBtn.onclick = function() {
+    // Stop any currently playing audio
+    if (currentSource) {
+      currentSource.stop();
+      currentSource = null;
+    }
+    // Hide audio status
+    hideAudioStatus();
+    // Clear canvas and explanations
+    clearCanvasAndExplanations();
+    // Clear any error messages
+    if (errorDiv) {
+      errorDiv.textContent = '';
+    }
+    // Reset audio selection to first option
+    const audioSelect = document.getElementById('audioSelect');
+    if (audioSelect) {
+      audioSelect.selectedIndex = 0;
+    }
+  };
+}
+
+
+// Predefined hexagram explanations and titles
+const hexagramExplanations = {
+  "1": "Strong action, leadership.",
+  "2": "Yielding, nurturing.",
+  "3": "Growth through struggle.",
+  "4": "Inexperience, naivety.",
+  "5": "Patience, potential.",
+  "6": "Opposition, struggle.",
+  "7": "Discipline, organization.",
+  "8": "Unity, community.",
+  "9": "Gentle restraint.",
+  "10": "Cautious progress.",
+  "11": "Harmony, prosperity.",
+  "12": "Stagnation, obstruction.",
+  "13": "Community, mutual support.",
+  "14": "Abundance.",
+  "15": "Humility, self-restraint.",
+  "16": "Exuberance, growth.",
+  "17": "Adaptability, flexibility.",
+  "18": "Repair, decay.",
+  "19": "Attraction, influence.",
+  "20": "Contemplation, observation, insight.",
+  "21": "Resolution, determination.",
+  "22": "Beauty, elegance.",
+  "23": "Broken, dissolution.",
+  "24": "Revival, regeneration.",
+  "25": "Purity, naivety.",
+  "26": "Strong restraint.",
+  "27": "Provision, support, mouth.",
+  "28": "Excess, overwhelm.",
+  "29": "Danger, the unknown, abysmal.",
+  "30": "Attachment, dependence.",
+  "31": "Attraction, seduction.",
+  "32": "Perseverance, constancy.",
+  "33": "Withdrawal, introspection.",
+  "34": "Strength, determination.",
+  "35": "Advancement, success.",
+  "36": "Concealment, hiding.",
+  "37": "Home, domesticity.",
+  "38": "Divergence, conflict.",
+  "39": "Blockage, difficulty.",
+  "40": "Liberation, relief.",
+  "41": "Reduction, simplification.",
+  "42": "Expansion, growth.",
+  "43": "Resolution, clarity.",
+  "44": "Attraction, influence.",
+  "45": "Assembly, community.",
+  "46": "Ascension, promotion.",
+  "47": "Exhaustion, depletion.",
+  "48": "Nourishment, source.",
+  "49": "Change, transformation.",
+  "50": "Nourishment, transformation.",
+  "51": "Shock, the unexpected.",
+  "52": "Meditation, rest.",
+  "53": "Gradual progress, unfolding.",
+  "54": "Union, partnership.",
+  "55": "Plenitude, richness.",
+  "56": "Travel, exploration.",
+  "57": "The penetrating, subtlety.",
+  "58": "Happiness, delight.",
+  "59": "Dissolution, scattering.",
+  "60": "Restraint, moderation.",
+  "61": "Sincerity, integrity.",
+  "62": "Minor details.",
+  "63": "The end, conclusion.",
+  "64": "Transition, final steps."
+};
+const titlesAdd = {
+  "1": "Creative force",
+  "2": "Receptive",
+  "3": "Difficult beginning",
+  "4": "Youthful folly",
+  "5": "Waiting",
+  "6": "Conflict",
+  "7": "The army",
+  "8": "Holding together",
+  "9": "Small restraint",
+  "10": "Treading",
+  "11": "Peace",
+  "12": "Standstill",
+  "13": "Fellowship",
+  "14": "Mental clarity",
+  "15": "Modesty",
+  "16": "Enthusiasm",
+  "17": "Following",
+  "18": "Decay",
+  "19": "Approach",
+  "20": "View",
+  "21": "Biting through",
+  "22": "Grace",
+  "23": "Splitting apart",
+  "24": "Return",
+  "25": "Innocence",
+  "26": "Controlled power",
+  "27": "Nourishment",
+  "28": "Critical mass",
+  "29": "The abyss",
+  "30": "Clinging",
+  "31": "Influence",
+  "32": "Duration",
+  "33": "Retreat",
+  "34": "Great Power",
+  "35": "Progress",
+  "36": "Brightness hiding",
+  "37": "The family",
+  "38": "Opposition",
+  "39": "Obstruction",
+  "40": "Deliverance",
+  "41": "Decrease",
+  "42": "Increase",
+  "43": "Resoluteness",
+  "44": "Coming to meet",
+  "45": "Gathering together",
+  "46": "Pushing upward",
+  "47": "Oppression",
+  "48": "The well",
+  "49": "Revolution",
+  "50": "The cauldron",
+  "51": "The arousing",
+  "52": "Keeping still",
+  "53": "Development",
+  "54": "The marriage",
+  "55": "Abundance",
+  "56": "The wanderer",
+  "57": "The gentle",
+  "58": "The joyous",
+  "59": "Dispersion",
+  "60": "Limitation",
+  "61": "Inner truth",
+  "62": "Power of the small",
+  "63": "After completion",
+  "64": "Before completion"
+};
+</script>
+</body>
+</html>
